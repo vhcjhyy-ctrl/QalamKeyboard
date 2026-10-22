@@ -43,7 +43,7 @@ class QalamInputMethodService : InputMethodService() {
         keysArea.removeAllViews()
         val rows = if (symbols) {
             listOf("1 2 3 4 5 6 7 8 9 0".split(" "),
-                "@ # \\$ % & - + ( ) /".split(" "),
+                "@ # \$ % & - + ( ) /".split(" "),
                 listOf("=", "*", "\"", "'", ":", ";", "!", "?", "↵"))
         } else if (arabic) {
             listOf("ض ص ث ق ف غ ع ه خ ح ج".split(" "),
