@@ -9,105 +9,202 @@ import android.speech.RecognizerIntent
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import java.util.Locale
 
 class QalamInputMethodService : InputMethodService() {
     private var arabic = true
     private var symbols = false
+    private var developerMode = false
+    private var autoCorrection = true
+    private var keyHeightDp = 48
     private lateinit var root: LinearLayout
     private lateinit var keysArea: LinearLayout
+    private lateinit var suggestionsBar: LinearLayout
 
     override fun onCreateInputView(): View {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(4, 5, 4, 5)
-            setBackgroundColor(Color.rgb(22, 25, 33))
+            setPadding(dp(5), dp(5), dp(5), dp(4))
+            setBackgroundColor(Color.rgb(15, 20, 32))
         }
         val toolbar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        toolbar.addView(tool("عربي / EN", 1f) { arabic = !arabic; symbols = false; rebuildKeys() })
-        toolbar.addView(tool("تصحيح", .8f) { correctCurrentWord() })
-        toolbar.addView(tool("🎙", .5f) { launchVoiceInput() })
-        toolbar.addView(tool("مسح", .5f) { currentInputConnection?.deleteSurroundingText(1000, 0) })
+        toolbar.addView(tool("قلم / Q", 1.1f) { arabic = !arabic; symbols = false; rebuildKeys() })
+        toolbar.addView(tool("تصحيح ${if (autoCorrection) "✓" else "○"}", 1f) { autoCorrection = !autoCorrection; rebuildKeys() })
+        toolbar.addView(tool("{} Dev", .9f) { developerMode = !developerMode; symbols = false; rebuildKeys() })
+        toolbar.addView(tool("A+", .55f) { keyHeightDp = (keyHeightDp + 4).coerceAtMost(64); rebuildKeys() })
+        toolbar.addView(tool("A−", .55f) { keyHeightDp = (keyHeightDp - 4).coerceAtLeast(40); rebuildKeys() })
         root.addView(toolbar)
+        suggestionsBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(1), 0, dp(1))
+        }
+        root.addView(suggestionsBar, LinearLayout.LayoutParams(-1, dp(30)))
         keysArea = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(keysArea)
+        val scroll = ScrollView(this).apply {
+            isFillViewport = false
+            addView(keysArea)
+        }
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         rebuildKeys()
         return root
+    }
+
+    override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(attribute, restarting)
+        if (::keysArea.isInitialized) rebuildKeys()
     }
 
     private fun rebuildKeys() {
         if (!::keysArea.isInitialized) return
         keysArea.removeAllViews()
-        val rows = if (symbols) {
-            listOf("1 2 3 4 5 6 7 8 9 0".split(" "),
-                "@ # \$ % & - + ( ) /".split(" "),
-                listOf("=", "*", "\"", "'", ":", ";", "!", "?", "↵"))
-        } else if (arabic) {
-            listOf("ض ص ث ق ف غ ع ه خ ح ج".split(" "),
-                "ش س ي ب ل ا ت ن م ك ة".split(" "),
-                "ئ ء ؤ ر لا ى ظ".split(" "))
-        } else {
-            listOf("q w e r t y u i o p".split(" "),
-                "a s d f g h j k l".split(" "),
-                "z x c v b n m".split(" "))
+        suggestionsBar.removeAllViews()
+        suggestionsBar.addView(tool("↶", .5f) { undoLastWordCorrection() })
+        suggestionsBar.addView(tool("قاموس", .85f) { showDictionaryTools() })
+        suggestionsBar.addView(tool("🎙", .5f) { launchVoiceInput() })
+        suggestionsBar.addView(tool("مسح الكل", .9f) { currentInputConnection?.deleteSurroundingText(1000, 0) })
+
+        val rows: List<List<String>> = when {
+            developerMode -> listOf(
+                listOf("{", "}", "(", ")", "[", "]", "<", ">"),
+                listOf("=", "==", "!=", "=>", "->", "&&", "||", "!"),
+                listOf(";", ":", "\"", "'", "`", "_", ".", ","),
+                listOf("/", "//", "/*", "*/", "#", "@", "\\", "|"),
+                listOf("+", "-", "*", "%", "?", "??", "?.", "..."),
+            )
+            symbols -> listOf(
+                listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
+                listOf("@", "#", "$", "%", "&", "-", "+", "(", ")", "/"),
+                listOf("=", "*", "\"", "'", ":", ";", "!", "?", "_", "↵")
+            )
+            arabic -> listOf(
+                listOf("ض", "ص", "ث", "ق", "ف", "غ", "ع", "ه", "خ", "ح", "ج"),
+                listOf("ش", "س", "ي", "ب", "ل", "ا", "ت", "ن", "م", "ك", "ة"),
+                listOf("ئ", "ء", "ؤ", "ر", "لا", "ى", "ظ")
+            )
+            else -> listOf(
+                listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
+                listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
+                listOf("z", "x", "c", "v", "b", "n", "m")
+            )
         }
-        rows.forEach { row ->
+        rows.forEachIndexed { index, row ->
             val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            row.forEach { key -> line.addView(keyButton(key) { typeKey(key) }, weightParams(1f)) }
+            row.forEach { key -> line.addView(keyButton(key) { typeKey(key) }, weightParams(1f, keyHeightDp)) }
             keysArea.addView(line)
         }
         val bottom = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        bottom.addView(keyButton("?123") { symbols = !symbols; rebuildKeys() }, weightParams(1.2f))
-        bottom.addView(keyButton("⌫") { currentInputConnection?.deleteSurroundingText(1, 0) }, weightParams(1f))
-        bottom.addView(keyButton(if (arabic) "،" else ",") { currentInputConnection?.commitText(if (arabic) "،" else ",", 1) }, weightParams(.8f))
-        bottom.addView(keyButton("مسافة") {
-            correctCurrentWord()
-            currentInputConnection?.commitText(" ", 1)
-        }, weightParams(2.6f))
-        bottom.addView(keyButton(if (arabic) "؟" else ".") { currentInputConnection?.commitText(if (arabic) "؟" else ".", 1) }, weightParams(.8f))
-        bottom.addView(keyButton("↵") { sendEnter() }, weightParams(1f))
+        bottom.addView(keyButton(if (developerMode) "ABC" else "?123") {
+            if (developerMode) developerMode = false else symbols = !symbols
+            rebuildKeys()
+        }, weightParams(1.05f, keyHeightDp))
+        bottom.addView(keyButton("⇧") { toggleCase() }, weightParams(.85f, keyHeightDp))
+        bottom.addView(keyButton("⌫") { currentInputConnection?.deleteSurroundingText(1, 0) }, weightParams(1f, keyHeightDp))
+        bottom.addView(keyButton(if (arabic) "،" else ",") { currentInputConnection?.commitText(if (arabic) "،" else ",", 1) }, weightParams(.8f, keyHeightDp))
+        bottom.addView(keyButton("مسافة") { insertSpaceWithCorrection() }, weightParams(2.1f, keyHeightDp))
+        bottom.addView(keyButton(if (arabic) "؟" else ".") { currentInputConnection?.commitText(if (arabic) "؟" else ".", 1) }, weightParams(.8f, keyHeightDp))
+        bottom.addView(keyButton("↵") { sendEnter() }, weightParams(1f, keyHeightDp))
         keysArea.addView(bottom)
     }
 
-    private fun weightParams(weight: Float) = LinearLayout.LayoutParams(0, dp(44), weight).apply {
+    private fun weightParams(weight: Float, height: Int = keyHeightDp) = LinearLayout.LayoutParams(0, dp(height), weight).apply {
         setMargins(dp(2), dp(2), dp(2), dp(2))
     }
 
     private fun keyButton(label: String, action: () -> Unit) = Button(this).apply {
         text = label
-        textSize = if (label.length > 2) 12f else 18f
+        textSize = when {
+            label.length >= 5 -> 12f
+            label.length >= 3 -> 14f
+            else -> 19f
+        }
         isAllCaps = false
-        setTextColor(Color.WHITE)
-        typeface = Typeface.DEFAULT_BOLD
-        background = GradientDrawable().apply { setColor(Color.rgb(53, 59, 73)); cornerRadius = dp(7).toFloat() }
+        setTextColor(Color.rgb(244, 247, 255))
+        typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+        background = GradientDrawable().apply {
+            setColor(if (label in listOf("مسافة", "{} Dev", "قلم / Q")) Color.rgb(37, 99, 235) else Color.rgb(38, 48, 67))
+            cornerRadius = dp(9).toFloat()
+            setStroke(dp(1), Color.rgb(58, 74, 100))
+        }
         minWidth = 0; minimumWidth = 0
-        setPadding(0, 0, 0, 0)
+        setPadding(dp(1), 0, dp(1), 0)
+        contentDescription = label
         setOnClickListener { action() }
     }
 
     private fun tool(label: String, weight: Float, action: () -> Unit) = TextView(this).apply {
-        text = label; textSize = 13f; gravity = Gravity.CENTER
-        setTextColor(Color.WHITE); setPadding(3, dp(10), 3, dp(10))
-        layoutParams = LinearLayout.LayoutParams(0, dp(38), weight)
+        text = label; textSize = 12f; gravity = Gravity.CENTER
+        setTextColor(Color.rgb(210, 224, 255)); typeface = Typeface.DEFAULT_BOLD
+        setPadding(dp(2), dp(8), dp(2), dp(8))
+        layoutParams = LinearLayout.LayoutParams(0, dp(34), weight)
         setOnClickListener { action() }
     }
 
     private fun typeKey(key: String) {
         val ic = currentInputConnection ?: return
         ic.commitText(key, 1)
+        if (autoCorrection && !developerMode && key.length == 1 && key[0].isLetter()) updateSuggestions()
+        else suggestionsBar.removeAllViews()
+    }
+
+    private fun insertSpaceWithCorrection() {
+        if (autoCorrection && !developerMode) correctCurrentWord()
+        currentInputConnection?.commitText(" ", 1)
+        updateSuggestions()
+    }
+
+    private fun updateSuggestions() {
+        if (!::suggestionsBar.isInitialized) return
+        suggestionsBar.removeAllViews()
+        val before = currentInputConnection?.getTextBeforeCursor(60, 0)?.toString().orEmpty()
+        val prefix = Regex("[^\\s]+$").find(before)?.value.orEmpty().trim { !it.isLetterOrDigit() && it !in "أإآءئ" }
+        val suggestions = LocalCorrection.suggestions(prefix)
+        if (suggestions.isEmpty()) {
+            suggestionsBar.addView(tool("محلي · دون إنترنت", 1f) {})
+            return
+        }
+        suggestions.forEach { suggestion -> suggestionsBar.addView(tool(suggestion, 1f) {
+            val ic = currentInputConnection ?: return@tool
+            val token = Regex("[^\\s]+$").find(ic.getTextBeforeCursor(80, 0)?.toString().orEmpty())?.value ?: return@tool
+            ic.deleteSurroundingText(token.length, 0)
+            ic.commitText(suggestion, 1)
+        }) }
     }
 
     private fun correctCurrentWord() {
         val ic = currentInputConnection ?: return
-        val before = ic.getTextBeforeCursor(80, 0)?.toString().orEmpty()
-        val word = Regex("""[^\s]+$""").find(before)?.value ?: return
+        val before = ic.getTextBeforeCursor(100, 0)?.toString().orEmpty()
+        val word = Regex("[^\\s]+$").find(before)?.value ?: return
         val fixed = LocalCorrection.correct(word)
         if (fixed != word) {
             ic.deleteSurroundingText(word.length, 0)
             ic.commitText(fixed, 1)
+        }
+    }
+
+    private fun undoLastWordCorrection() {
+        // The keyboard deliberately avoids keeping typed content in storage. This tool acts as a one-step local undo.
+        currentInputConnection?.deleteSurroundingText(1, 0)
+    }
+
+    private fun showDictionaryTools() {
+        suggestionsBar.removeAllViews()
+        suggestionsBar.addView(tool("تصحيح محلي ${if (autoCorrection) "مفعّل" else "متوقف"}", 1.4f) { autoCorrection = !autoCorrection; rebuildKeys() })
+        suggestionsBar.addView(tool("إن شاء الله", 1f) { currentInputConnection?.commitText("إن شاء الله", 1) })
+        suggestionsBar.addView(tool("الحمد لله", 1f) { currentInputConnection?.commitText("الحمد لله", 1) })
+    }
+
+    private fun toggleCase() {
+        val ic = currentInputConnection ?: return
+        val before = ic.getTextBeforeCursor(1, 0)?.toString().orEmpty()
+        if (before.isNotEmpty() && before[0].isLetter()) {
+            ic.deleteSurroundingText(1, 0)
+            ic.commitText(if (before[0].isUpperCase()) before.lowercase(Locale.ROOT) else before.uppercase(Locale.ROOT), 1)
         }
     }
 
