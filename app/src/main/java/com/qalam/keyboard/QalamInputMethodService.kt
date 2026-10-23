@@ -35,16 +35,7 @@ class QalamInputMethodService : InputMethodService() {
     }
     private var receiverRegistered = false
 
-    private val speechReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(context: android.content.Context?, intent: Intent?) {
-            if (intent?.action != VoiceInputActivity.ACTION_INSERT_SPEECH) return
-            val text = intent.getStringExtra(VoiceInputActivity.EXTRA_SPOKEN_TEXT).orEmpty()
-            if (text.isNotBlank()) currentInputConnection?.commitText(text, 1)
-        }
-    }
-    private var receiverRegistered = false
-
-    override fun onCreate() {\n        super.onCreate()\n        val filter = android.content.IntentFilter(VoiceInputActivity.ACTION_INSERT_SPEECH)\n        if (android.os.Build.VERSION.SDK_INT >= 33) {\n            registerReceiver(speechReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)\n        } else {\n            @Suppress("DEPRECATION")\n            registerReceiver(speechReceiver, filter)\n        }\n        receiverRegistered = true\n    }\n\n    override fun onDestroy() {\n        if (receiverRegistered) { unregisterReceiver(speechReceiver); receiverRegistered = false }\n        super.onDestroy()\n    }\n\n    override fun onCreate() {
+    override fun onCreate() {
         super.onCreate()
         val filter = android.content.IntentFilter(VoiceInputActivity.ACTION_INSERT_SPEECH)
         if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -57,7 +48,10 @@ class QalamInputMethodService : InputMethodService() {
     }
 
     override fun onDestroy() {
-        if (receiverRegistered) { unregisterReceiver(speechReceiver); receiverRegistered = false }
+        if (receiverRegistered) {
+            unregisterReceiver(speechReceiver)
+            receiverRegistered = false
+        }
         super.onDestroy()
     }
 
