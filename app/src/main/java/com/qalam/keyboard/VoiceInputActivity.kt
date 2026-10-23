@@ -18,24 +18,28 @@ class VoiceInputActivity : Activity() {
             }
             startActivityForResult(speech, 41)
         } catch (_: Exception) {
-            Toast.makeText(this, "خدمة الإملاء الصوتي غير متاحة على هذا الجهاز", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "الإملاء الصوتي يحتاج إلى خدمة تعرّف متوافقة على الجهاز", Toast.LENGTH_LONG).show()
             finish()
         }
     }
 
-    @Deprecated("Deprecated in Android API; retained for compatibility with speech recognizers")
+    @Deprecated("Deprecated Android API retained for broad speech-recognizer compatibility")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 41 && resultCode == RESULT_OK) {
             val spoken = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
             if (!spoken.isNullOrBlank()) {
-                getSystemService(android.view.inputmethod.InputMethodManager::class.java)
-                    ?.currentInputMethodSubtype
-                // Return text to the IME through a package-scoped broadcast is intentionally avoided.
-                // Insert by switching focus back is not guaranteed; see README limitations.
-                Toast.makeText(this, "تم التعرف على: $spoken — الإدراج المباشر قيد الاستكمال", Toast.LENGTH_LONG).show()
+                sendBroadcast(Intent(ACTION_INSERT_SPEECH).apply {
+                    setPackage(packageName)
+                    putExtra(EXTRA_SPOKEN_TEXT, spoken)
+                })
             }
         }
         finish()
+    }
+
+    companion object {
+        const val ACTION_INSERT_SPEECH = "com.qalam.keyboard.INSERT_SPEECH"
+        const val EXTRA_SPOKEN_TEXT = "spoken_text"
     }
 }
