@@ -1,6 +1,5 @@
 package com.qalam.keyboard
 
-import java.text.Normalizer
 import java.util.Locale
 
 /** Lightweight, deterministic correction that never needs network access. */
@@ -24,10 +23,8 @@ object LocalCorrection {
         "thier" to "their", "teh" to "the", "recieve" to "receive", "adn" to "and",
         "wich" to "which", "becuase" to "because", "definately" to "definitely",
         "seperate" to "separate", "occured" to "occurred", "adress" to "address",
-        "langauge" to "language", "untill" to "until", " goverment" to " government"
+        "langauge" to "language", "untill" to "until", "goverment" to "government"
     )
-
-    private val preserveCaseKeys = setOf("i")
 
     fun correct(word: String): String {
         if (word.isBlank()) return word
