@@ -3,7 +3,7 @@ name: Build Qalam Keyboard APK
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, 'feature/**']
 
 jobs:
   build:
