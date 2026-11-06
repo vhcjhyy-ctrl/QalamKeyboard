@@ -1,8 +1,25 @@
-# Qalam Keyboard
-Native Android keyboard starter in Kotlin.
+# قلم مسلم | Qalam Keyboard
 
-## Cloud build
-Open Actions > Build Qalam Keyboard APK > Run workflow. After success, download the QalamKeyboard-debug-apk artifact, unzip it, and install app-debug.apk.
+لوحة مفاتيح أندرويد أصلية مبنية بلغة Kotlin، تدعم الكتابة العربية والإنجليزية والتصحيح المحلي والإملاء الصوتي.
 
-## Limitations
-Local spelling correction uses a small dictionary, not a full spell checker. Voice recognition opens Android's speech recognizer, but inserting recognized text directly into the focused field is not yet implemented. Build success and device behavior must be confirmed in Actions.
+## البناء
+من GitHub افتح Actions ثم اختر **Build Qalam Keyboard APK** واضغط Run workflow. بعد نجاح العملية نزّل artifact باسم `QalamKeyboard-debug-apk` واستخرج ملف APK.
+
+## التثبيت والتفعيل
+1. ثبّت ملف APK.
+2. افتح التطبيق واضغط «فتح إعدادات لوحات المفاتيح».
+3. فعّل «لوحة قلم».
+4. ارجع واضغط «اختيار لوحة المفاتيح الآن»، ثم اختر «لوحة قلم».
+
+## الوظائف الحالية
+- لوحة عربية وإنجليزية.
+- إدخال الأرقام والرموز وعلامات الترقيم.
+- حذف حرف أو مسح النص السابق.
+- تصحيح محلي محدود للكلمات الشائعة دون إرسال النص إلى خادم.
+- الإملاء الصوتي عبر خدمة التعرف على الكلام المتاحة في أندرويد، ثم إدراج النص المتعرّف عليه في حقل الكتابة النشط عبر broadcast مقيّد باسم الحزمة.
+
+## الخصوصية والحدود
+لا يرسل التصحيح المحلي النص إلى الإنترنت. أما التعرف الصوتي فيعتمد على مزود خدمة الكلام المثبت وإعداداته، وقد يعالج الصوت وفق سياسة ذلك المزود. قائمة التصحيح الحالية صغيرة وليست مدققًا لغويًا شاملًا.
+
+## التحقق
+يجب التأكد من نجاح إنشاء APK في GitHub Actions، ثم اختبار التثبيت والكتابة والصوت فعليًا على جهاز أندرويد. لا تعتبر نسخة البناء صالحة للاستخدام النهائي قبل إتمام الاختبار على جهاز حقيقي.
