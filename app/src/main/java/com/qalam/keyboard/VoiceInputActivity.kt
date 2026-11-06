@@ -7,6 +7,11 @@ import android.speech.RecognizerIntent
 import android.widget.Toast
 
 class VoiceInputActivity : Activity() {
+    companion object {
+        const val ACTION_INSERT_TEXT = "com.qalam.keyboard.action.INSERT_RECOGNIZED_TEXT"
+        const val EXTRA_TRANSCRIBED_TEXT = "recognized_text"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val lang = intent.getStringExtra(RecognizerIntent.EXTRA_LANGUAGE) ?: "ar-EG"
@@ -15,6 +20,7 @@ class VoiceInputActivity : Activity() {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang)
                 putExtra(RecognizerIntent.EXTRA_PROMPT, "تحدث الآن")
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             }
             startActivityForResult(speech, 41)
         } catch (_: Exception) {
@@ -29,11 +35,10 @@ class VoiceInputActivity : Activity() {
         if (requestCode == 41 && resultCode == RESULT_OK) {
             val spoken = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
             if (!spoken.isNullOrBlank()) {
-                getSystemService(android.view.inputmethod.InputMethodManager::class.java)
-                    ?.currentInputMethodSubtype
-                // Return text to the IME through a package-scoped broadcast is intentionally avoided.
-                // Insert by switching focus back is not guaranteed; see README limitations.
-                Toast.makeText(this, "تم التعرف على: $spoken — الإدراج المباشر قيد الاستكمال", Toast.LENGTH_LONG).show()
+                sendBroadcast(Intent(ACTION_INSERT_TEXT).apply {
+                    setPackage(packageName)
+                    putExtra(EXTRA_TRANSCRIBED_TEXT, spoken)
+                })
             }
         }
         finish()
