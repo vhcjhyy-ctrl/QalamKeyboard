@@ -20,6 +20,29 @@ class QalamInputMethodService : InputMethodService() {
     private lateinit var root: LinearLayout
     private lateinit var keysArea: LinearLayout
 
+    private val voiceReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: Intent?) {
+            val spoken = intent?.getStringExtra(VoiceInputActivity.EXTRA_TRANSCRIBED_TEXT)
+            if (!spoken.isNullOrBlank()) currentInputConnection?.commitText(spoken, 1)
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        val filter = android.content.IntentFilter(VoiceInputActivity.ACTION_INSERT_TEXT)
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(voiceReceiver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(voiceReceiver, filter)
+        }
+    }
+
+    override fun onDestroy() {
+        try { unregisterReceiver(voiceReceiver) } catch (_: Exception) { }
+        super.onDestroy()
+    }
+
     override fun onCreateInputView(): View {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
